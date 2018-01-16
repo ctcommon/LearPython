@@ -24,7 +24,8 @@ def refill():
 def buy():
 	with lock:
 		print 'Buying candy...',
-		if candytray.acquire(False):  #计数器即信号量的值不能小于0，因此这个调用一般会在再次增加之前被阻塞。通过传入False让调用不再阻塞，而是在应当阻塞的时候返回一个False，指明为空
+		if candytray.acquire(False):  #计数器即信号量的值不能小于0，因此这个调用一般会在再次增加之前被阻塞。
+						#通过传入False让调用不再阻塞，而是在应当阻塞的时候返回一个False，指明为空
 			print 'OK'
 		else:
 			print 'empty, skipping'
