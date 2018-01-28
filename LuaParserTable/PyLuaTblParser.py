@@ -46,7 +46,7 @@ class PyLuaTblParser(object):
 		
 	
 	
-	def _SkipSpace(self,str_,index,flag = 1): #忽略空格
+	def _SkipSpace(self,str_,index,flag = 1): #忽略空格 
 		if(flag == 1):
 			while str_[index].isspace():
 				index += 1
@@ -601,20 +601,16 @@ class PyLuaTblParser(object):
 		self._start(str_)
 		fp.close()
 	def ReMoveNoneedKey(self,d):
-		if type(d) == type(dict):
+		if isinstance(d,dict):
 			for i in d.keys():
 				if not isinstance(i, (int, float, str)):
 					del d[i]
-				if type(d[i]) == type(dict):
+				if isinstance(d,dict):
 					self.ReMoveNoneedKey(d[i])
-				elif type(d[i]) == type(list):
+				elif isinstance(d[i],list):
 					for j in d[i]:
-						if type(j) == type(dict):
+						if isinstance(j,dict):
 							self.ReMoveNoneedKey(j)
-		elif type(d) == type(list):
-			for j in d[i]:
-				if type(j) == type(dict):
-					self.ReMoveNoneedKey(j)
 					
 	def _TransList(self,l):
 		self._lua_table_str += '{'
@@ -628,6 +624,10 @@ class PyLuaTblParser(object):
 				elif isinstance(l[j],str):
 					str_ = self._TransString(l[j])
 					str_ = '"' + str_ + '"' 
+					if str_ == '"False"':
+						str_ = 'false'
+					elif str_ == '"True"':
+						str_ = 'true'
 					self._lua_table_str += str_ + ','
 				elif isinstance(l[j],list):
 					self._TransList(l[j])
@@ -675,13 +675,3 @@ class PyLuaTblParser(object):
 		self._TransDict(d)
 		s = self._lua_table_str
 		self.load(s)
-
-
-			
-						
-					
-				
-				
-			
-			
-		
