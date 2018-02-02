@@ -10,8 +10,8 @@ class DirList(object):
 	def clrDir(self,ev=None):
 		self.cwd.set('')  #什么变量拥有set方法
 	
-	def setDirAndGo(self,ev=None):
-		self.last = self.cwd.get() #什么变量拥有get方法
+	def setDirAndGo(self,ev=None):  #双击文本项的时候，会将其设为当前（以供后续的doLS使用）并将其背景色设置为红色。
+		self.last = self.cwd.get() 
 		self.dirs.config(selectbackground='red')
 		check = self.dirs.get(self.dirs.curselection()) 
 		if not check:
@@ -77,15 +77,17 @@ class DirList(object):
 		#命令选项中设置为scrollbar的set方法，以及设置其本身的yview（见81行）
 		self.dirs = Listbox(self.dirfm,height=15,
 				width=50,yscrollcommand=self.dirsb.set)
-		self.dirs.bind('<Double-1>',self.setDirAndGo)  #bind的作用是什么
-		self.dirsb.config(command=self.dirs.yview)
+		#绑定意味着将一个回调函数与按键、鼠标操作或一些其它事件连接起来，当用户发起这类事件时，回调函数就会执行。当双击Listbox的任意条目时，就会
+		#调用setDirAndGo函数
+		self.dirs.bind('<Double-1>',self.setDirAndGo)  #通过使用bind方法，Listbox列表项可以与回调函数setDirAndGo连接起来
+		self.dirsb.config(command=self.dirs.yview) #Scrollbar通过调用config方法与Listbox连接起来
 		self.dirs.pack(side=LEFT,fill=BOTH)
 		self.dirfm.pack()
 		
 		#Entry是Tkinter用来接收字符串输入的控件，该控件允许用户输入一行文字。如果输入的文字太长，文字会向后滚动
 		self.dirn = Entry(self.top,width=50,
 					textvariable=self.cwd)
-		self.dirn.bind('<Return>',self.doLS)
+		self.dirn.bind('<Return>',self.doLS) #将其与回调函数doLS绑定在一起，那么在点击相应的条目并通过Entry接收到字符串时，会调用doLS判定此文件类型
 		self.dirn.pack()
 
 		#每次进行button或滚动条之前都会先设置一个Frame?
