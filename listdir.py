@@ -10,7 +10,7 @@ class DirList(object):
 	def clrDir(self,ev=None):
 		self.cwd.set('')  #什么变量拥有set方法
 	
-	def setDirAndGo(self,ev=None):  #双击文本项的时候，会将其设为当前（以供后续的doLS使用）并将其背景色设置为红色。
+	def setDirAndGo(self,ev=None):  #双击文本项的时候，会将其设为当前并将其背景色设置为红色然后调用doLS函数。
 		self.last = self.cwd.get() 
 		self.dirs.config(selectbackground='red')
 		check = self.dirs.get(self.dirs.curselection()) 
@@ -86,8 +86,9 @@ class DirList(object):
 		
 		#Entry是Tkinter用来接收字符串输入的控件，该控件允许用户输入一行文字。如果输入的文字太长，文字会向后滚动
 		self.dirn = Entry(self.top,width=50,
-					textvariable=self.cwd)
-		self.dirn.bind('<Return>',self.doLS) #将其与回调函数doLS绑定在一起，那么在点击相应的条目并通过Entry接收到字符串时，会调用doLS判定此文件类型
+					textvariable=self.cwd)  #设置textvariable会不断更新显示文本
+		#将其与回调函数doLS绑定在一起，那么在点击相应的条目并通过Entry接收到字符串时或者是在Entry当中输入了字符串之后，会调用doLS然后显示目录列表
+		self.dirn.bind('<Return>',self.doLS)  #此绑定表示doLS和回车键绑定在一起，那么当在Entry当中输入了目录名称之后，按回车键也会调用doLS 
 		self.dirn.pack()
 
 		#每次进行button或滚动条之前都会先设置一个Frame?
