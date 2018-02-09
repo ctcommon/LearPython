@@ -4,6 +4,7 @@
 import socket
 import select
 import sys
+import Queue
 import threading,time
 import threadpool
 import signal
@@ -49,7 +50,7 @@ class User:
 			return True
 		return False
 			
-	def create_room(self,ID):
+	def create_room(self,ID): 
 		if roomdict.has_key(ID):
 			warn_mess = 'warning:someone has created %s room' %ID
 			self.send_msg(warn_mess)
@@ -80,8 +81,8 @@ class User:
 				usr.send_msg(mess_)
 			return True
 		return False	
-	def notice_room(self,mess_):  #没有实现异常
-		if self.room != None:
+	def notice_room(self,mess_,ID): 
+		if self.room != None and self.room == roomdict[ID]:
 			self.room.notice_room(mess_)
 			return True
 		return False
@@ -135,18 +136,19 @@ def hand_user_conn(usr,data):
 				print exit_mess
 		if msg[0] == 'sendroom':
 			talk_mess = "user[%s] said{} : %s" %(usr.username,msg[2])
-			if usr.notice_room(talk_mess):
-				print talk_mess.format(" to "+msg[1])
+			if usr.notice_room(talk_mess,msg[1]):
+				print talk_mess.format(" to "+msg[1] + " room ")
 		if msg[0] == 'privatemass':
 			talk_mess = "user[%s] said{}: %s" %(usr.username,msg[2])
 			if usr.private_send(msg[1],talk_mess):
-				print talk_mess.format(" to "+msg[1])
+				print talk_mess.format(" to "+msg[1] + " you ")
 		
 
 
 
 class handlersocket:
 	def __init__(self,port,lenlisten):
+		self.lenlisten = lenlisten
 		self.port = port
 		self.socket_bind_listen()
 		self.make_socket_nonblock()
@@ -157,8 +159,8 @@ class handlersocket:
 		try:
 			self.socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 			self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-			self.socket.bind((IP,PORT))
-			self.socket.listen(lenlisten)
+			self.socket.bind(('0.0.0.0',self.port))
+			self.socket.listen(self.lenlisten)
 		except:
 			self.socket.close()
 			traceback.print_exc()
@@ -178,7 +180,7 @@ class handlersocket:
 			traceback.print_exc()
 	
 class epollhandlersocket:
-	def __init__(self,IP,PORT,lenlisten,pool):
+	def __init__(self,PORT,lenlisten,pool):
 		self.handlersocket = handlersocket(PORT,lenlisten)
 		self.socket = self.handlersocket.returnsocket()
 		self.epoll = select.epoll()
@@ -196,43 +198,42 @@ class epollhandlersocket:
 		for fd,event in self._events:
 			socket = self.fd_to_socket[fd]
 			if socket == self.socket:
-				self.handlersocket.accept_connect()
+				connect,address = self.handlersocket.accept_connect()
 				user = User(connect)
 				userlist.append(user)
+				self.message_queues[connect] = Queue.Queue()
 				self.fd_to_usr[connect.fileno()] = user
 				self.epoll.register(connect.fileno(),select.EPOLLIN|select.EPOLLET|select.EPOLLONESHOT)
 				self.fd_to_socket[connect.fileno()] = connect
-			elif event&select.EPOLLHUP or event&select.EPOLLERR or ):
+			elif event&select.EPOLLHUP or event&select.EPOLLERR:
 				self.epoll.unregister(fd)
-				usr = socket_to_usr[fd]
+				usr = fd_to_usr[fd]
 				usr.logout_hall()
 				userlist.remove(usr)
 				del self.fd_to_socket[fd]
 			elif  event&select.EPOLLIN:
 				data = socket.recv(1024)
 				if data:
-					message_queues[socket].put(data)
+					self.message_queues[socket].put(data)
 					self.epoll.modify(fd,select.EPOLLOUT|select.EPOLLET|select.EPOLLONESHOT)
 			elif event&select.EPOLLOUT:
 				try:
-					data = message_queues[socket].get_nowait()
+					data = self.message_queues[socket].get_nowait()
 				except Queue.Empty:
-					self.epoll.modify(fd,selectEPOLLIN|select.EPOLLET|select.EPOLLONESHOT)
+					self.epoll.modify(fd,select.EPOLLIN|select.EPOLLET|select.EPOLLONESHOT)
 				else:
 					usr = self.fd_to_usr[fd]
 					self.pool.word_add(hand_user_conn,usr,data)
-					self.epoll.modify(fd,selectEPOLLIN|select.EPOLLET|select.EPOLLONESHOT)
+					self.epoll.modify(fd,select.EPOLLIN|select.EPOLLET|select.EPOLLONESHOT)
 					
 def main():
-	signal.signal(signal.SIGTERM, SIG_IGN)
+	signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 	pool = threadpool.PoolManage(4)
-	handlersocket = epollhandlersocket('127.0.0.1',9999,10,pool)
+	handlersocket = epollhandlersocket(9999,10,pool)
 	while True:
-		try:
-			handlersocket.epoll_wait()
-			handlersocket.handler_event()
-		except:
-			handlersocket.socket.close()
+		handlersocket.epoll_wait()
+		handlersocket.handler_event()
+	handlersocket.socket.close()
 
 if __name__ == '__main__':
 	main()
